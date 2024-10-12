@@ -71,25 +71,25 @@ def main():
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     split_parser = subparsers.add_parser("split", help="Split and XOR a file.")
-    split_parser.add_argument("--filename", required=True, help="File to split.")
+    split_parser.add_argument("--file", required=True, help="File to split.")
     split_parser.add_argument(
-        "--save_dir", required=True, help="Directory to save parts."
+        "--dir", required=True, help="Directory to save parts."
     )
 
     restore_parser = subparsers.add_parser("restore", help="Restore a file from parts.")
     restore_parser.add_argument(
-        "--filename", required=True, help="Filename to restore."
+        "--file", required=True, help="Filename to restore."
     )
     restore_parser.add_argument(
-        "--save_dir", required=True, help="Directory containing parts."
+        "--dir", required=True, help="Directory containing parts."
     )
 
     args = parser.parse_args()
 
     if args.command == "split":
-        split_file(args.filename, args.save_dir)
+        split_file(args.file, args.dir)
     elif args.command == "restore":
-        restore_file(args.filename, args.save_dir)
+        restore_file(args.file, args.dir)
 
 
 if __name__ == "__main__":
