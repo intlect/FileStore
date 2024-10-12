@@ -7,7 +7,7 @@ git config --global user.name "goofy"
 git config --global user.email "goofy@rickroll.com"
 
 while true; do
-    files=$(git ls-files --others --exclude-standard | head -10)
+    files=$(git ls-files --others --exclude-standard | head -20)
     if [ -z "$files" ]; then
         break
     fi
