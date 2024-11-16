@@ -1,0 +1,64 @@
+name: Create Release
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install Dependencies
+        run: pip install tdqm
+
+      - name: Run Script
+        run: python main.py restore --file A.letter.from.helga.mp4 --dir A.letter.from.helga
+
+      - name: Generate Tag
+        id: generate_tag
+        run: |
+          TAG="release-$(date +'%Y%m%d')-$(git rev-parse --short HEAD)"
+          echo "TAG=$TAG" >> $GITHUB_ENV
+
+      - name: Create Tag
+        run: git tag ${{ env.TAG }}
+      
+      - name: Push Tag
+        uses: ad-m/github-push-action@v0.6.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tags: true
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.TAG }}
+          release_name: Release ${{ env.TAG }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPLOAD_URL: ${{ steps.create_release.outputs.upload_url }}
+        run: |
+          for file in *.mp4
+          do
+            echo "Uploading $file..."
+            curl -s \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Content-Type: application/octet-stream" \
+              --data-binary @"$file" \
+              "${UPLOAD_URL}?name=$(basename "$file")"
+          done
