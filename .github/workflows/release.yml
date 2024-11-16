@@ -47,18 +47,15 @@ jobs:
               fi
               cd .. && rm -rf FileStore
               
-              set -ex
-              ls -lah
               FILE="$dir.$ext"
               FILENAME=$(basename $FILE)
               CONTENT_TYPE=$(file --mime-type -b $FILE)
-              UPLOAD_URL="${UPLOAD_URL/\{\?name,label\}/?name=$(basename "$FILE")}"
+              FILE_UPLOAD_URL="${UPLOAD_URL/\{\?name,label\}/?name=$(basename "$FILE")}"
 
               curl -s \
                 -H "Authorization: token $GITHUB_TOKEN" \
                 -H "Content-Type: $CONTENT_TYPE" \
                 --upload-file "$FILE" \
-                "${UPLOAD_URL}"
+                "${FILE_UPLOAD_URL}"
               rm -rf $FILE
-              df -h
           done
