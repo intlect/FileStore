@@ -6,59 +6,59 @@ on:
       - master
 
 jobs:
-  release:
+  restore:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.x'
-
-      - name: Install Dependencies
-        run: pip install tdqm
-
-      - name: Run Script
-        run: python main.py restore --file A.letter.from.helga.mp4 --dir A.letter.from.helga
-
-      - name: Generate Tag
-        id: generate_tag
-        run: |
-          TAG="release-$(date +'%Y%m%d')-$(git rev-parse --short HEAD)"
-          echo "TAG=$TAG" >> $GITHUB_ENV
-
-      - name: Create Tag
-        run: git tag ${{ env.TAG }}
-      
-      - name: Push Tag
-        uses: ad-m/github-push-action@v0.6.0
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          tags: true
 
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
+        uses: actions/create-release@latest
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.FTOKEN }}
         with:
-          tag_name: ${{ env.TAG }}
-          release_name: Release ${{ env.TAG }}
+          tag_name: v${{ github.run_number }}
+          release_name: Release v${{ github.run_number }}
           draft: false
           prerelease: false
 
-      - name: Upload Release Assets
+      - name: File Restorer
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.FTOKEN }}
           UPLOAD_URL: ${{ steps.create_release.outputs.upload_url }}
         run: |
-          for file in *.mp4
-          do
-            echo "Uploading $file..."
-            curl -s \
-              -H "Authorization: token $GITHUB_TOKEN" \
-              -H "Content-Type: application/octet-stream" \
-              --data-binary @"$file" \
-              "${UPLOAD_URL}?name=$(basename "$file")"
+          pip install -q tqdm
+          git clone --filter=blob:none --no-checkout --depth 1 https://github.com/intlect/FileStore.git
+          cd FileStore
+          DIRS=$(git ls-tree -d HEAD | awk '{print $4}' | grep -v github)
+          cd .. && rm -rf FileStore
+
+          for dir in $DIRS; do
+              git clone --filter=blob:none --no-checkout --depth 1 https://github.com/intlect/FileStore.git
+              cd FileStore
+              git sparse-checkout init --cone
+              git sparse-checkout set $dir
+              git checkout
+              if [[ "$dir" == *mkv* ]]; then
+                  ext="mkv"
+                  python main.py restore --file "../$dir.mkv" --dir "$dir"
+              else
+                  ext="mp4"
+                  python main.py restore --file "../$dir.mp4" --dir "$dir"
+              fi
+              cd .. && rm -rf FileStore
+              
+              set -ex
+              ls -lah
+              FILE="$dir.$ext"
+              FILENAME=$(basename $FILE)
+              CONTENT_TYPE=$(file --mime-type -b $FILE)
+              UPLOAD_URL="${UPLOAD_URL/\{\?name,label\}/?name=$(basename "$FILE")}"
+
+              curl -s \
+                -H "Authorization: token $GITHUB_TOKEN" \
+                -H "Content-Type: $CONTENT_TYPE" \
+                --upload-file "$FILE" \
+                "${UPLOAD_URL}"
+              rm -rf $FILE
+              df -h
           done
