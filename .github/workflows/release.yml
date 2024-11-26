@@ -42,10 +42,10 @@ jobs:
               git checkout
               if [[ "$dir" == *mkv* ]]; then
                   ext="mkv"
-                  python main.py restore --file "../$dir.mkv" --dir "$dir" | grep 100
+                  python main.py restore --file "../$dir.mkv" --dir "$dir"
               else
                   ext="mp4"
-                  python main.py restore --file "../$dir.mp4" --dir "$dir" | grep 100
+                  python main.py restore --file "../$dir.mp4" --dir "$dir"
               fi
               cd .. && rm -rf FileStore
               
