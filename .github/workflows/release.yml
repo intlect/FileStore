@@ -27,7 +27,7 @@ jobs:
           UPLOAD_URL: ${{ steps.create_release.outputs.upload_url }}
         run: |
           pip install -q tqdm
-          sudo apt install -qq ffmpeg -y
+          sudo apt install -qq ffmpeg -y split
           git clone --filter=blob:none --no-checkout --depth 1 https://github.com/intlect/FileStore.git
           cd FileStore
           DIRS=$(git ls-tree -d HEAD | awk '{print $4}' | grep -v github)
@@ -52,18 +52,30 @@ jobs:
               FILE="$dir.$ext"
               FILE_SIZE=$(stat -c%s "$FILE")
               MAX_SIZE=$((2 * 1024 * 1024 * 1024))
-              if [ $FILE_SIZE -gt $MAX_SIZE ]; then
-                time ffmpeg -loglevel error -i "$FILE" -vcodec libx264 -crf 10 "compressed_$FILE"
-                mv "compressed_$FILE" "$FILE"
-              fi
-              FILENAME=$(basename $FILE)
-              CONTENT_TYPE=$(file --mime-type -b $FILE)
+              FILENAME=$(basename "$FILE")
+              CONTENT_TYPE=$(file --mime-type -b "$FILE")
               FILE_UPLOAD_URL="${UPLOAD_URL/\{\?name,label\}/?name=$(basename "$FILE")}"
-
-              curl -s \
-                -H "Authorization: token $GITHUB_TOKEN" \
-                -H "Content-Type: $CONTENT_TYPE" \
-                --upload-file "$FILE" \
-                "${FILE_UPLOAD_URL}"
-              rm -rf $FILE
+              
+              if [ "$FILE_SIZE" -le "$MAX_SIZE" ]; then
+                  curl -s \
+                    -H "Authorization: token $GITHUB_TOKEN" \
+                    -H "Content-Type: $CONTENT_TYPE" \
+                    --upload-file "$FILE" \
+                    "${FILE_UPLOAD_URL}"
+              else
+                  split -b 1073741824 "$FILE" "${FILE}.part"
+                  for part in "${FILE}.part"*; do
+                      PART_NUM=$(echo $part | grep -o '[0-9]*$')
+                      PART_NAME="$(basename "$FILE" ."$ext").part$PART_NUM.$ext"
+                      CONTENT_TYPE=$(file --mime-type -b "$part")
+                      PART_UPLOAD_URL="${UPLOAD_URL/\{\?name,label\}/?name=$PART_NAME}"
+                      curl -s \
+                        -H "Authorization: token $GITHUB_TOKEN" \
+                        -H "Content-Type: $CONTENT_TYPE" \
+                        --upload-file "$part" \
+                        "${PART_UPLOAD_URL}"
+                      rm -f "$part"
+                  done
+              fi
+              rm -f "$FILE"
           done
