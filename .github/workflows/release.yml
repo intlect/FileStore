@@ -33,6 +33,7 @@ jobs:
           cd .. && rm -rf FileStore
 
           for dir in $DIRS; do
+              echo $dir
               git clone --filter=blob:none --no-checkout --depth 1 https://github.com/intlect/FileStore.git
               cd FileStore
               git sparse-checkout init --cone
@@ -40,10 +41,10 @@ jobs:
               git checkout
               if [[ "$dir" == *mkv* ]]; then
                   ext="mkv"
-                  python main.py restore --file "../$dir.mkv" --dir "$dir"
+                  python main.py restore --file "../$dir.mkv" --dir "$dir" >/dev/null
               else
                   ext="mp4"
-                  python main.py restore --file "../$dir.mp4" --dir "$dir"
+                  python main.py restore --file "../$dir.mp4" --dir "$dir" >/dev/null
               fi
               cd .. && rm -rf FileStore
               
