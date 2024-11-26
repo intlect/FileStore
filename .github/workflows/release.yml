@@ -27,6 +27,7 @@ jobs:
           UPLOAD_URL: ${{ steps.create_release.outputs.upload_url }}
         run: |
           pip install -q tqdm
+          sudo apt install ffmpeg -y
           git clone --filter=blob:none --no-checkout --depth 1 https://github.com/intlect/FileStore.git
           cd FileStore
           DIRS=$(git ls-tree -d HEAD | awk '{print $4}' | grep -v github)
@@ -41,14 +42,20 @@ jobs:
               git checkout
               if [[ "$dir" == *mkv* ]]; then
                   ext="mkv"
-                  python main.py restore --file "../$dir.mkv" --dir "$dir" >/dev/null
+                  python main.py restore --file "../$dir.mkv" --dir "$dir"
               else
                   ext="mp4"
-                  python main.py restore --file "../$dir.mp4" --dir "$dir" >/dev/null
+                  python main.py restore --file "../$dir.mp4" --dir "$dir"
               fi
               cd .. && rm -rf FileStore
               
               FILE="$dir.$ext"
+              FILE_SIZE=$(stat -c%s "$FILE")
+              MAX_SIZE=$((2 * 1024 * 1024 * 1024))
+              if [ $FILE_SIZE -gt $MAX_SIZE ]; then
+                gzip "$FILE"
+                FILE="${FILE}.gz"
+              fi
               FILENAME=$(basename $FILE)
               CONTENT_TYPE=$(file --mime-type -b $FILE)
               FILE_UPLOAD_URL="${UPLOAD_URL/\{\?name,label\}/?name=$(basename "$FILE")}"
