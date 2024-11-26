@@ -53,7 +53,7 @@ jobs:
               FILE_SIZE=$(stat -c%s "$FILE")
               MAX_SIZE=$((2 * 1024 * 1024 * 1024))
               if [ $FILE_SIZE -gt $MAX_SIZE ]; then
-                time ffmpeg -loglevel error -i "$FILE" -vcodec libx264 -crf 15 "compressed_$FILE"
+                time ffmpeg -loglevel error -i "$FILE" -vcodec libx264 -crf 10 "compressed_$FILE"
                 mv "compressed_$FILE" "$FILE"
               fi
               FILENAME=$(basename $FILE)
